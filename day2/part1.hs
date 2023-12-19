@@ -33,11 +33,19 @@ strToCube str = createCube x (strToInt y)
     y = head wds
     wds = words str
 
-extractGameAndLines :: String -> (Int, [Cube])
-extractGameAndLines line = (x, y)
+extractGame :: String -> Int
+-- "Game n" -> n
+extractGame gameStr = strToInt $ (last . words) gameStr
+
+extractCubes :: String -> [Cube]
+-- "2 red, 3 blue ; 4 green" -> [Red 2, Blue 3, Green 4]
+extractCubes cubeStr = mapMaybe (strToCube . trimLeft) (splitOneOf ",;" cubeStr)
+
+extractGameAndCubes :: String -> (Int, [Cube])
+extractGameAndCubes line = (x, y)
   where
-    x = strToInt $ last . words $ head zs
-    y = mapMaybe (strToCube . trimLeft) (splitOneOf ",;" $ last zs)
+    x = extractGame (head zs)
+    y = extractCubes (last zs)
     zs = splitOn ": " line
 
 getValid :: (Int, [Cube]) -> Maybe Int
@@ -48,4 +56,4 @@ getValid (x, cbs)
 main = do
     contents <- readFile "input.txt"
     let ls = lines contents
-    print $ sum $ mapMaybe (getValid . extractGameAndLines) ls
+    print $ sum $ mapMaybe (getValid . extractGameAndCubes) ls
