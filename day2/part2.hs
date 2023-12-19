@@ -43,10 +43,10 @@ createCube "green" n = Just (Green n)
 createCube "blue" n = Just (Blue n)
 createCube _ _ = Nothing
 
-instance Show Cube where
-    show (Red n) = "Red " ++ show n
-    show (Green n) = "Green " ++ show n
-    show (Blue n) = "Blue " ++ show n
+-- instance Show Cube where
+--   show (Red n) = "Red " ++ show n
+--   show (Green n) = "Green " ++ show n
+--   show (Blue n) = "Blue " ++ show n
 
 strToCube :: String -> Maybe Cube
 strToCube str = createCube x (strToInt y)
@@ -63,8 +63,6 @@ parseCubes :: String -> [Cube]
 parseCubes line = extractCubes $ last $ splitOn ": " line
 
 main = do
-    contents <- readFile "input.txt"
-    let ls = lines contents
-    print $ map extractCubes ls
-
--- print $ sum $ map (getMaxCubes . extractCubes) ls
+  contents <- readFile "input.txt"
+  let ls = lines contents
+  print $ sum $ map (getMaxCubes . parseCubes) ls
