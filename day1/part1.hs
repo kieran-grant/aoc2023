@@ -12,8 +12,7 @@ lineToInt :: [Char] -> Int
 lineToInt = strToInt . getCalibration . filter isDigit
 
 main = do
-    contents <- readFile "input1.txt"
-    let ls = lines contents
-    let result =  sum (map lineToInt ls)
-    print result
-
+  contents <- readFile "input1.txt"
+  let ls = lines contents
+  let result = sum (map lineToInt ls)
+  print result
