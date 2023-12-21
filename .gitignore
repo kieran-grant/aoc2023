@@ -1,0 +1,8 @@
+# ignore files without extensions
+*
+!/**/
+!*.*
+
+# haskell build files
+*.o
+*.hi
