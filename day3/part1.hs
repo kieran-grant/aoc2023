@@ -1,32 +1,6 @@
-import Data.Char (digitToInt, isAlphaNum, isDigit, isSpace)
+import Data.Char (digitToInt, isAlphaNum, isDigit)
 import Data.List (findIndices)
-import Data.List.Split (splitOn, splitOneOf)
 import Data.Maybe (mapMaybe)
-
--- padding functions
-addPadding :: [String] -> [String]
-addPadding toPad = addPadding' toPad []
-
-addPadding' :: [String] -> [String] -> [String]
-addPadding' (x : xs) [] = addPadding' (x : xs) [makeRowOfDots $ length x + 2]
-addPadding' (x : xs) ys = addPadding' xs (ys ++ [appendDotsToLine x])
-addPadding' [] (y : ys) = [y] ++ ys ++ [y]
-
-appendDotsToLine :: String -> String
-appendDotsToLine str = '.' : (str ++ ['.'])
-
-makeRowOfDots :: Int -> String
-makeRowOfDots n = replicate n '.'
-
-main = do
-    contents <- readFile "input.txt"
-    let ls = lines contents
-    let paddedLs = addPadding ls
-    let intsNextToSymbols = consume paddedLs
-    -- mapM print $ unique $ concat intsNextToSymbols
-    print $ sum $ map parsedIntToInt $ unique $ concat intsNextToSymbols
-
--- scratch
 
 data ParsedInt = ParsedInt
     { value :: Int
@@ -37,6 +11,14 @@ data ParsedInt = ParsedInt
     deriving (Show, Eq)
 
 type Symbol = Int
+
+main = do
+    contents <- readFile "input.txt"
+    let ls = lines contents
+    let paddedLs = addPadding ls
+    let intsNextToSymbols = consume paddedLs
+    -- mapM print $ unique $ concat intsNextToSymbols
+    print $ sum $ map parsedIntToInt $ unique $ concat intsNextToSymbols
 
 consume :: [String] -> [[ParsedInt]]
 consume strings = consume' (zip strings [0 ..]) []
@@ -60,9 +42,6 @@ inRange n sym = (endX n >= (sym - 1)) && (startX n <= (sym + 1))
 
 getSymbols :: String -> [Symbol]
 getSymbols = findIndices isSymbol
-
-incrementSymbol :: Symbol -> Symbol
-incrementSymbol s = s + 1
 
 isSymbol :: Char -> Bool
 isSymbol x = not $ isAlphaNum x || (x == '.')
@@ -90,3 +69,18 @@ unique (x : xs) = x : unique (filter (x /=) xs)
 
 parsedIntToInt :: ParsedInt -> Int
 parsedIntToInt = value
+
+-- padding functions
+addPadding :: [String] -> [String]
+addPadding toPad = addPadding' toPad []
+
+addPadding' :: [String] -> [String] -> [String]
+addPadding' (x : xs) [] = addPadding' (x : xs) [makeRowOfDots $ length x + 2]
+addPadding' (x : xs) ys = addPadding' xs (ys ++ [appendDotsToLine x])
+addPadding' [] (y : ys) = [y] ++ ys ++ [y]
+
+appendDotsToLine :: String -> String
+appendDotsToLine str = '.' : (str ++ ['.'])
+
+makeRowOfDots :: Int -> String
+makeRowOfDots n = replicate n '.'
