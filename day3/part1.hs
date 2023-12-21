@@ -42,7 +42,7 @@ consume :: [String] -> [[ParsedInt]]
 consume strings = consume' (zip strings [0 ..]) []
 
 consume' :: [(String, Int)] -> [[ParsedInt]] -> [[ParsedInt]]
-consume' ((a, _) : (b, y) : (c, z) : strings) ints = consume' ((b, y) : (c, z) : strings) (ints ++ [getValidParts a b c y])
+consume' ((prev, _) : (curr, currY) : (next, nextY) : strings) ints = consume' ((curr, currY) : (next, nextY) : strings) (ints ++ [getValidParts prev curr next currY])
 consume' _ ints = ints
 
 getValidParts :: String -> String -> String -> Int -> [ParsedInt]
