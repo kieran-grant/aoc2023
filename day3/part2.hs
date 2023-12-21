@@ -32,19 +32,19 @@ getValidParts prev curr next currY =
     let x = getNums prev (currY - 1)
         y = getNums curr currY
         z = getNums next (currY + 1)
-     in filter (isSymbolAdj' $ getSymbols curr) $ x ++ y ++ z
+     in filter (isGearAdj' $ getGears curr) $ x ++ y ++ z
 
-isSymbolAdj' :: [Symbol] -> ParsedInt -> Bool
-isSymbolAdj' syms n = any (inRange n) syms
+isGearAdj' :: [Symbol] -> ParsedInt -> Bool
+isGearAdj' syms n = any (inRange n) syms
 
 inRange :: ParsedInt -> Symbol -> Bool
 inRange n sym = (endX n >= (sym - 1)) && (startX n <= (sym + 1))
 
-getSymbols :: String -> [Symbol]
-getSymbols = findIndices isSymbol
+getGears :: String -> [Symbol]
+getGears = findIndices isGear
 
-isSymbol :: Char -> Bool
-isSymbol x = not $ isAlphaNum x || (x == '.')
+isGear :: Char -> Bool
+isGear x = x == '*'
 
 getNums :: String -> Int -> [ParsedInt]
 getNums str y = getNums' str 0 y [] []
