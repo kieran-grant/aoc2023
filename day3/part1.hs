@@ -1,4 +1,5 @@
 import Data.Char (digitToInt, isAlphaNum, isDigit, isSpace)
+import Data.List (findIndices)
 import Data.List.Split (splitOn, splitOneOf)
 import Data.Maybe (mapMaybe)
 
@@ -22,63 +23,70 @@ main = do
     let ls = lines contents
     let paddedLs = addPadding ls
     let intsNextToSymbols = consume paddedLs
-    -- mapM print $ concat intsNextToSymbols
-    print $ unique $ concat intsNextToSymbols
+    -- mapM print $ unique $ concat intsNextToSymbols
+    print $ sum $ map parsedIntToInt $ unique $ concat intsNextToSymbols
 
 -- scratch
 
-consume :: [String] -> [[Int]]
-consume strings = consume' strings []
+data ParsedInt = ParsedInt
+    { value :: Int
+    , startX :: Int
+    , endX :: Int
+    , row :: Int
+    }
+    deriving (Show, Eq)
 
-consume' :: [String] -> [[Int]] -> [[Int]]
-consume' (a : b : c : strings) ints = consume' (b : c : strings) (ints ++ [checkLine a b c])
+type Symbol = Int
+
+consume :: [String] -> [[ParsedInt]]
+consume strings = consume' (zip strings [0 ..]) []
+
+consume' :: [(String, Int)] -> [[ParsedInt]] -> [[ParsedInt]]
+consume' ((a, _) : (b, y) : (c, z) : strings) ints = consume' ((b, y) : (c, z) : strings) (ints ++ [getValidParts a b c y])
 consume' _ ints = ints
 
-uncurry3 :: (a -> b -> c -> d) -> ((a, b, c) -> d)
-uncurry3 f (a, b, c) = f a b c
+getValidParts :: String -> String -> String -> Int -> [ParsedInt]
+getValidParts prev curr next currY =
+    let x = getNums prev (currY - 1)
+        y = getNums curr currY
+        z = getNums next (currY + 1)
+     in filter (isSymbolAdj' $ getSymbols curr) $ x ++ y ++ z
 
-strToInt :: [Char] -> Int
-strToInt x = read x :: Int
+isSymbolAdj' :: [Symbol] -> ParsedInt -> Bool
+isSymbolAdj' syms n = any (inRange n) syms
 
-{-
-Good start!!
+inRange :: ParsedInt -> Symbol -> Bool
+inRange n sym = (endX n >= (sym - 1)) && (startX n <= (sym + 1))
 
-Next, in the checkLine method, we need to:
-    [ ] - modify the isSymbol method to return a list of 1D indices of symbols on the current line
-    [ ] - then, for each of these indices, we need to get *adjacent* numbers, e.g. (if x is one of the indicies) getNums currLine [x-1, x+1], getNums prevLine [x-1, x, x+1], getNums [x-1, x, x+1]
-        [ ] - could use what I already have, but add an additional check to see if any part of the number that has just been parsed is adjacent, if so append
-            - e.g.  c
--}
+getSymbols :: String -> [Symbol]
+getSymbols = findIndices isSymbol
 
--- currLine -> indexDecrementer -> runningIntBuffer -> parsedInts
-getAdjNums :: String -> Int -> String -> [Int] -> [Int]
-getAdjNums _ (-1) [] allNums = allNums
-
--- need case where we are beyond index (-1) but haven't finished reading int
-
-checkLine :: String -> String -> String -> [Int]
-checkLine prev curr next =
-    if any isSymbol curr
-        then getNums prev ++ getNums curr ++ getNums next
-        else []
+incrementSymbol :: Symbol -> Symbol
+incrementSymbol s = s + 1
 
 isSymbol :: Char -> Bool
 isSymbol x = not $ isAlphaNum x || (x == '.')
 
-getNums :: String -> [Int]
-getNums str = getNums' str [] []
+getNums :: String -> Int -> [ParsedInt]
+getNums str y = getNums' str 0 y [] []
 
-getNums' :: String -> String -> [Int] -> [Int]
-getNums' [] [] allNums = allNums
-getNums' [] numAcc allNums = allNums ++ [strToInt numAcc]
-getNums' (x : xs) numAcc allNums
-    | isDigit x = getNums' xs (numAcc ++ [x]) allNums -- current char is digit, add to running number and continue
-    | null numAcc = getNums' xs [] allNums -- current char isn't a digit, and running list is empty, just continue
-    | otherwise = getNums' xs [] (allNums ++ [strToInt numAcc]) -- current char isn't a digit, and have accumulated some numbers, turn that into an int
+-- line -> xPos -> yPos -> numAcc -> numsSoFar -> output
+getNums' :: String -> Int -> Int -> String -> [ParsedInt] -> [ParsedInt]
+getNums' [] _ _ [] allNums = allNums
+getNums' [] x y numAcc allNums = allNums ++ [strToParsedInt numAcc x y]
+getNums' (c : cs) x y numAcc allNums
+    | isDigit c = getNums' cs (x + 1) y (numAcc ++ [c]) allNums -- current char is digit, add to running number and continue
+    | null numAcc = getNums' cs (x + 1) y [] allNums -- current char isn't a digit, and running list is empty, just continue
+    | otherwise = getNums' cs (x + 1) y [] (allNums ++ [strToParsedInt numAcc x y]) -- current char isn't a digit, and have accumulated some numbers, turn that into an int
 
--- let ls = lines contents
--- print $ sum $ map (getMaxCubes . parseCubes) ls
---
+strToParsedInt :: String -> Int -> Int -> ParsedInt
+strToParsedInt str x y = ParsedInt{value = strToInt str, startX = x - length str, endX = x - 1, row = y}
+
+strToInt :: [Char] -> Int
+strToInt x = read x :: Int
 
 unique [] = []
-unique (x : xs) = x : unique (filter ((/=) x) xs)
+unique (x : xs) = x : unique (filter (x /=) xs)
+
+parsedIntToInt :: ParsedInt -> Int
+parsedIntToInt = value
