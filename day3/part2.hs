@@ -10,37 +10,46 @@ data ParsedInt = ParsedInt
     }
     deriving (Show, Eq)
 
-type Symbol = Int
+type Gear = Int
 
 main = do
     contents <- readFile "input.txt"
     let ls = lines contents
     let paddedLs = addPadding ls
-    let intsNextToSymbols = consume paddedLs
-    -- mapM print $ unique $ concat intsNextToSymbols
-    print $ sum $ map parsedIntToInt $ unique $ concat intsNextToSymbols
+    let gearParts = unique . concat $ consume paddedLs
+    print $ sum $ map getGearRatio gearParts
 
-consume :: [String] -> [[ParsedInt]]
+consume :: [String] -> [[(ParsedInt, ParsedInt)]]
 consume strings = consume' (zip strings [0 ..]) []
 
-consume' :: [(String, Int)] -> [[ParsedInt]] -> [[ParsedInt]]
-consume' ((prev, _) : (curr, currY) : (next, nextY) : strings) ints = consume' ((curr, currY) : (next, nextY) : strings) (ints ++ [getValidParts prev curr next currY])
+consume' :: [(String, Int)] -> [[(ParsedInt, ParsedInt)]] -> [[(ParsedInt, ParsedInt)]]
+consume' ((prev, _) : (curr, currY) : (next, nextY) : strings) ints = consume' ((curr, currY) : (next, nextY) : strings) (ints ++ [getGearParts prev curr next currY])
 consume' _ ints = ints
 
-getValidParts :: String -> String -> String -> Int -> [ParsedInt]
-getValidParts prev curr next currY =
+getGearRatio :: (ParsedInt, ParsedInt) -> Int
+getGearRatio (a, b) = parsedIntToInt a * parsedIntToInt b
+
+getGearParts :: String -> String -> String -> Int -> [(ParsedInt, ParsedInt)]
+getGearParts prev curr next currY =
     let x = getNums prev (currY - 1)
         y = getNums curr currY
         z = getNums next (currY + 1)
-     in filter (isGearAdj' $ getGears curr) $ x ++ y ++ z
+        gears = getGears curr
+        allNums = x ++ y ++ z
+     in mapMaybe (getAdjNums' allNums) gears
 
-isGearAdj' :: [Symbol] -> ParsedInt -> Bool
-isGearAdj' syms n = any (inRange n) syms
+getAdjNums' :: [ParsedInt] -> Gear -> Maybe (ParsedInt, ParsedInt)
+getAdjNums' nums gear =
+    if length adjNums == 2
+        then Just (head adjNums, last adjNums)
+        else Nothing
+  where
+    adjNums = filter (inRange gear) nums
 
-inRange :: ParsedInt -> Symbol -> Bool
-inRange n sym = (endX n >= (sym - 1)) && (startX n <= (sym + 1))
+inRange :: Gear -> ParsedInt -> Bool
+inRange sym n = (endX n >= (sym - 1)) && (startX n <= (sym + 1))
 
-getGears :: String -> [Symbol]
+getGears :: String -> [Gear]
 getGears = findIndices isGear
 
 isGear :: Char -> Bool
@@ -64,6 +73,7 @@ strToParsedInt str x y = ParsedInt{value = strToInt str, startX = x - length str
 strToInt :: [Char] -> Int
 strToInt x = read x :: Int
 
+unique :: (Eq a) => [a] -> [a]
 unique [] = []
 unique (x : xs) = x : unique (filter (x /=) xs)
 
