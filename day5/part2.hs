@@ -1,21 +1,43 @@
 import Data.List (intersect, transpose)
 import Data.List.Split (splitOn)
 
+data Interval = Interval
+  { start :: Int,
+    end :: Int
+  }
+
+data Mapping = Mapping
+  { source :: Int,
+    dest :: Int,
+    range :: Int
+  }
+
 main = do
   contents <- readFile "input.txt"
   let ls = (getLineGroups . lines) contents
   let rawSeeds = getRawSeeds (head ls)
   let seeds = getAllSeeds rawSeeds
-  let mapData = map getData (tail ls)
-  let pipeline = makePipeline mapData
-  let soln = map (pipe pipeline) seeds
-  print $ minimum soln
+  print $ length seeds
+
+-- let mapData = map getData (tail ls)
+-- let pipeline = makePipeline mapData
+-- let soln = getMin pipeline seeds
+-- print soln
+
+getMin :: [Int -> Int] -> [Int] -> Int
+getMin fns seeds = getMin' fns seeds [0 ..]
+
+getMin' :: [Int -> Int] -> [Int] -> [Int] -> Int
+getMin' fns seeds (x : xs) =
+  if pipe fns x `elem` seeds
+    then x
+    else getMin' fns seeds xs
 
 makePipeline :: [[[Int]]] -> [Int -> Int]
 makePipeline ns = makePipeline' ns []
 
 makePipeline' :: [[[Int]]] -> [Int -> Int] -> [Int -> Int]
-makePipeline' xs fns = foldl (\fns x -> fns ++ [mapMaker x]) fns xs
+makePipeline' xs fns = foldl (\fns x -> mapMaker x : fns) fns xs
 
 pipe :: [a -> a] -> a -> a
 pipe fs a = foldl (flip ($)) a fs -- can change foldl to scanl for better debugging
@@ -23,8 +45,8 @@ pipe fs a = foldl (flip ($)) a fs -- can change foldl to scanl for better debugg
 mapMaker :: [[Int]] -> Int -> Int
 mapMaker [] n = n
 mapMaker (r : rs) n =
-  let destStart = head r
-      sourceStart = r !! 1
+  let sourceStart = head r
+      destStart = r !! 1
       rangeLength = last r
    in if inRange (sourceStart, sourceStart + rangeLength) n
         then destStart + (n - sourceStart)
