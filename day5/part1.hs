@@ -8,7 +8,7 @@ main = do
   let mapData = map getData (tail ls)
   let pipeline = makePipeline mapData
   let soln = map (pipe pipeline) seeds
-  print $ minimum $ last $ transpose soln
+  print $ minimum soln
 
 makePipeline :: [[[Int]]] -> [Int -> Int]
 makePipeline ns = makePipeline' ns []
@@ -23,8 +23,8 @@ composeList' :: [a -> a] -> a -> [a] -> [a]
 composeList' [] curr as = as ++ [curr]
 composeList' (f : fs) curr as = composeList' fs (f curr) as ++ [curr]
 
-pipe :: [a -> a] -> a -> [a]
-pipe fs a = scanl (flip ($)) a fs
+pipe :: [a -> a] -> a -> a
+pipe fs a = foldl (flip ($)) a fs -- can change foldl to scanl for better debugging
 
 mapMaker :: [[Int]] -> Int -> Int
 mapMaker [] n = n
