@@ -16,13 +16,6 @@ makePipeline ns = makePipeline' ns []
 makePipeline' :: [[[Int]]] -> [Int -> Int] -> [Int -> Int]
 makePipeline' xs fns = foldl (\fns x -> fns ++ [mapMaker x]) fns xs
 
-composeList :: [a -> a] -> a -> [a]
-composeList fs x = composeList' fs x []
-
-composeList' :: [a -> a] -> a -> [a] -> [a]
-composeList' [] curr as = as ++ [curr]
-composeList' (f : fs) curr as = composeList' fs (f curr) as ++ [curr]
-
 pipe :: [a -> a] -> a -> a
 pipe fs a = foldl (flip ($)) a fs -- can change foldl to scanl for better debugging
 
@@ -43,7 +36,6 @@ parseInts :: String -> [Int]
 parseInts line = map strToInt (words line)
 
 getSeeds :: [String] -> [Int]
--- getSeeds strs = map strToInt (last $ splitOn ": " (head strs))
 getSeeds line = map strToInt (words $ last $ splitOn ": " (head line))
 
 getLineGroups :: [String] -> [[String]]
