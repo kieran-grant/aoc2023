@@ -5,52 +5,57 @@ data Interval = Interval
   { start :: Int,
     end :: Int
   }
+  deriving (Show, Eq)
 
 data Mapping = Mapping
-  { source :: Int,
-    dest :: Int,
-    range :: Int
+  { interval :: Interval,
+    shift :: Int
   }
+  deriving (Show, Eq)
 
 main = do
-  contents <- readFile "input.txt"
+  contents <- readFile "sample.txt"
   let ls = (getLineGroups . lines) contents
-  let rawSeeds = getRawSeeds (head ls)
-  let seeds = getAllSeeds rawSeeds
-  print $ length seeds
+  let seeds = getSeedIntervals $ getRawSeeds $ head ls
+  let mapData = map getData (tail ls)
+  let maps = map createMaps mapData
+  -- mapM_ print seeds
+  -- mapM print maps
+  mapM print $ getNewIntervals (head seeds) (head maps)
 
--- let mapData = map getData (tail ls)
--- let pipeline = makePipeline mapData
--- let soln = getMin pipeline seeds
--- print soln
+getNewIntervals :: Interval -> [Mapping] -> [Interval]
+getNewIntervals i mps = getNewIntervals' i mps []
 
-getMin :: [Int -> Int] -> [Int] -> Int
-getMin fns seeds = getMin' fns seeds [0 ..]
+getNewIntervals' :: Interval -> [Mapping] -> [Interval] -> [Interval]
+getNewIntervals' _ [] newInts = newInts
+getNewIntervals' ivl (m : ms) newInts =
+  if intervalsOverlap ivl (interval m)
+    then getNewIntervals' ivl ms (getIntervalsFromMapping ivl m : newInts)
+    else getNewIntervals' ivl ms newInts
 
-getMin' :: [Int -> Int] -> [Int] -> [Int] -> Int
-getMin' fns seeds (x : xs) =
-  if pipe fns x `elem` seeds
-    then x
-    else getMin' fns seeds xs
+getIntervalsFromMapping :: Interval -> Mapping -> Interval
+getIntervalsFromMapping i m =
+  let intStart = max (start i) (start $ interval m)
+      intEnd = min (end i) (end $ interval m)
+      diff = shift m
+   in createInterval (intStart + diff) (intEnd + diff)
 
-makePipeline :: [[[Int]]] -> [Int -> Int]
-makePipeline ns = makePipeline' ns []
+getMinInterval :: [Interval] -> Int
+getMinInterval ivls = minimum $ map start ivls
 
-makePipeline' :: [[[Int]]] -> [Int -> Int] -> [Int -> Int]
-makePipeline' xs fns = foldl (\fns x -> mapMaker x : fns) fns xs
+intervalsOverlap :: Interval -> Interval -> Bool
+intervalsOverlap i1 i2 = end i1 >= start i2 && start i1 <= end i2
 
-pipe :: [a -> a] -> a -> a
-pipe fs a = foldl (flip ($)) a fs -- can change foldl to scanl for better debugging
+-- parsing functions
 
-mapMaker :: [[Int]] -> Int -> Int
-mapMaker [] n = n
-mapMaker (r : rs) n =
-  let sourceStart = head r
-      destStart = r !! 1
-      rangeLength = last r
-   in if inRange (sourceStart, sourceStart + rangeLength) n
-        then destStart + (n - sourceStart)
-        else mapMaker rs n
+createMaps :: [[Int]] -> [Mapping]
+createMaps xss = createMaps' xss []
+
+createMaps' :: [[Int]] -> [Mapping] -> [Mapping]
+createMaps' xss mps = foldl (\mps xs -> createMapFromList xs : mps) mps xss
+
+createMapFromList :: [Int] -> Mapping
+createMapFromList (dst : src : rng : _) = Mapping (createInterval src rng) (dst - src)
 
 getData :: [String] -> [[Int]]
 getData strs = map parseInts (tail strs)
@@ -61,15 +66,18 @@ parseInts line = map strToInt (words line)
 getRawSeeds :: [String] -> [Int]
 getRawSeeds line = map strToInt (words $ last $ splitOn ": " (head line))
 
-getAllSeeds :: [Int] -> [Int]
-getAllSeeds xs = getAllSeeds' xs []
+getSeedIntervals :: [Int] -> [Interval]
+getSeedIntervals xs = getSeedIntervals' xs []
 
-getAllSeeds' :: [Int] -> [Int] -> [Int]
-getAllSeeds' [] ys = ys
-getAllSeeds' (s : r : xs) ys = getAllSeeds' xs (ys ++ [s .. (s + r - 1)])
+getSeedIntervals' :: [Int] -> [Interval] -> [Interval]
+getSeedIntervals' [] ys = ys
+getSeedIntervals' (x1 : x2 : xs) ys = getSeedIntervals' xs (createInterval x1 x2 : ys)
 
 getLineGroups :: [String] -> [[String]]
 getLineGroups strs = getLineGroups' strs [] []
+
+createInterval :: Int -> Int -> Interval
+createInterval start range = Interval start (start + range - 1)
 
 getLineGroups' :: [String] -> [String] -> [[String]] -> [[String]]
 getLineGroups' [] [] outStrs = outStrs
