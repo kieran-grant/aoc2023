@@ -1,6 +1,5 @@
-import Data.List (intersect, sort, transpose)
+import Data.List (sort)
 import Data.List.Split (splitOn)
-import Data.Maybe (catMaybes)
 
 data Interval = Interval
   { start :: Int,
@@ -17,8 +16,9 @@ data Mapping = Mapping
 instance Ord Mapping where
   (Mapping s1 _) `compare` (Mapping s2 _) = start s1 `compare` start s2
 
+main :: IO ()
 main = do
-  contents <- readFile "sample.txt"
+  contents <- readFile "input.txt"
   let ls = (getLineGroups . lines) contents
   let seeds = getSeedIntervals $ getRawSeeds $ head ls
   let mapData = map getData (tail ls)
@@ -37,34 +37,32 @@ mapInterval :: [Mapping] -> Interval -> [Interval]
 mapInterval mps ival = mapInterval' ival (sort $ filter (mappingOverlaps ival) mps) []
 
 mapInterval' :: Interval -> [Mapping] -> [Interval] -> [Interval]
-mapInterval' ivl [] [] = [ivl]
-mapInterval' _ [] ivls = ivls -- base case where both lists are empty
+mapInterval' ivl [] [] = [ivl] -- case where no mapping covers interval, just do id
+mapInterval' _ [] ivls = ivls -- case where both lists are empty
 mapInterval' ivl (m : ms) [] = mapInterval' ivl ms (mapStart ivl m) -- start case
 mapInterval' ivl [m] ivls = ivls ++ mapEnd ivl m -- end case
 mapInterval' ivl (m : ms) ivls =
-  -- mapping inside interval
-  let mappedInterval = applyMap ivl m
+  -- mapping conatained inside interval
+  let mappedInterval = applyMap m
       fillGap = Interval (end $ interval m) (start (interval $ head ms) - 1)
    in mapInterval' ivl ms (fillGap : mappedInterval : ivls)
 
-applyMap :: Interval -> Mapping -> Interval
-applyMap i m = Interval (shift m + start (interval m)) (shift m + end (interval m))
+applyMap :: Mapping -> Interval
+applyMap m = Interval (shift m + start (interval m)) (shift m + end (interval m))
 
 mapStart :: Interval -> Mapping -> [Interval]
 mapStart ivl mp =
   let mappingInterval = interval mp
    in if start ivl < start mappingInterval -- if there is some interval before the fist map
-        then [Interval (start ivl) (start mappingInterval - 1), applyMap ivl mp] -- add id map to start, then apply map to rest
-        else [Interval (start ivl + shift mp) (min (end mappingInterval) (end ivl) + shift mp)]
-
--- otherwise apply map from start of interval to min(end interval, end mapping)
+        then [Interval (start ivl) (start mappingInterval - 1), applyMap mp] -- add id map to start, then apply map to rest
+        else [Interval (start ivl + shift mp) (min (end mappingInterval) (end ivl) + shift mp)] -- otherwise apply map from start of interval to min(end interval, end mapping)
 
 mapEnd :: Interval -> Mapping -> [Interval]
 mapEnd ivl mp =
   let mappingInterval = interval mp
    in if end ivl > end (interval mp) -- if there is still some interval left after the last mapping
-        then [applyMap ivl mp, Interval (end (interval mp) + 1) (end ivl)] -- apply the map, and add id map rest
-        else [Interval (max (start mappingInterval) (start ivl) + shift mp) (end ivl + shift mp)] -- otherwise apply map up to end of interval
+        then [applyMap mp, Interval (end (interval mp) + 1) (end ivl)] -- apply the map, and add id map rest
+        else [Interval (max (start mappingInterval) (start ivl) + shift mp) (end ivl + shift mp)] -- otherwise apply map from max (start map, start ivl) up to end of interval
 
 getMinInterval :: [Interval] -> Int
 getMinInterval ivls = minimum $ map start ivls
@@ -118,6 +116,3 @@ getLineGroups' (x : xs) ys outStrs =
 
 strToInt :: String -> Int
 strToInt str = read str :: Int
-
-inRange :: (Int, Int) -> Int -> Bool
-inRange (s, e) n = s <= n && n < e
