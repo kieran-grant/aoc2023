@@ -24,35 +24,14 @@ main = do
   let mapData = map getData (tail ls)
   let maps = map createMaps mapData
   print (head seeds)
-  mapM print (sort $ filter (mappingOverlaps (head seeds)) (head maps))
-
--- mapM_ print seeds
--- mapM print maps
--- mapM print $ getNewIntervals (head seeds) (head maps)
-
--- getNewIntervals :: Interval -> [Mapping] -> [Interval]
--- getNewIntervals i mps = getNewIntervals' i mps []
---
--- getNewIntervals' :: Interval -> [Mapping] -> [Interval] -> [Interval]
--- getNewIntervals' _ [] newInts = newInts
--- getNewIntervals' ivl (m : ms) newInts =
---   if intervalsOverlap ivl (interval m)
---     then getNewIntervals' ivl ms (getIntervalsFromMapping ivl m : newInts)
---     else getNewIntervals' ivl ms newInts
---
--- getIntervalsFromMapping :: Interval -> Mapping -> Interval
--- getIntervalsFromMapping i m =
---   let intStart = max (start i) (start $ interval m)
---       intEnd = min (end i) (end $ interval m)
---       diff = shift m
---    in createInterval (intStart + diff) (intEnd + diff)
+  print $ mapInterval (head seeds) (head maps)
 
 mapInterval :: Interval -> [Mapping] -> [Interval]
 mapInterval ival mps = mapInterval' ival (sort $ filter (mappingOverlaps ival) mps) []
 
 mapInterval' :: Interval -> [Mapping] -> [Maybe Interval] -> [Interval]
 mapInterval' ivl mps [] = mapInterval' ivl mps [mapStart ivl (head mps)] -- start case
-mapInterval' ivl [m] ivls = catMaybes $ mapEnd ivl m : ivls -- end case
+mapInterval' ivl [m] ivls = catMaybes $ mapEnd ivl m : Just (applyMap m ivl) : ivls -- end case
 mapInterval' ivl (m1 : m2 : ms) ivls =
   let mappedInterval = Just (applyMap m1 ivl)
       fillGap = Just (Interval (end $ interval m1) (start (interval m1) - 1))
