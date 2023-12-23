@@ -1,5 +1,6 @@
-import Data.List (intersect, transpose)
+import Data.List (intersect, sort, transpose)
 import Data.List.Split (splitOn)
+import Data.Maybe (catMaybes)
 
 data Interval = Interval
   { start :: Int,
@@ -13,35 +14,70 @@ data Mapping = Mapping
   }
   deriving (Show, Eq)
 
+instance Ord Mapping where
+  (Mapping s1 _) `compare` (Mapping s2 _) = start s1 `compare` start s2
+
 main = do
   contents <- readFile "sample.txt"
   let ls = (getLineGroups . lines) contents
   let seeds = getSeedIntervals $ getRawSeeds $ head ls
   let mapData = map getData (tail ls)
   let maps = map createMaps mapData
-  -- mapM_ print seeds
-  -- mapM print maps
-  mapM print $ getNewIntervals (head seeds) (head maps)
+  print (head seeds)
+  mapM print (sort $ filter (mappingOverlaps (head seeds)) (head maps))
 
-getNewIntervals :: Interval -> [Mapping] -> [Interval]
-getNewIntervals i mps = getNewIntervals' i mps []
+-- mapM_ print seeds
+-- mapM print maps
+-- mapM print $ getNewIntervals (head seeds) (head maps)
 
-getNewIntervals' :: Interval -> [Mapping] -> [Interval] -> [Interval]
-getNewIntervals' _ [] newInts = newInts
-getNewIntervals' ivl (m : ms) newInts =
-  if intervalsOverlap ivl (interval m)
-    then getNewIntervals' ivl ms (getIntervalsFromMapping ivl m : newInts)
-    else getNewIntervals' ivl ms newInts
+-- getNewIntervals :: Interval -> [Mapping] -> [Interval]
+-- getNewIntervals i mps = getNewIntervals' i mps []
+--
+-- getNewIntervals' :: Interval -> [Mapping] -> [Interval] -> [Interval]
+-- getNewIntervals' _ [] newInts = newInts
+-- getNewIntervals' ivl (m : ms) newInts =
+--   if intervalsOverlap ivl (interval m)
+--     then getNewIntervals' ivl ms (getIntervalsFromMapping ivl m : newInts)
+--     else getNewIntervals' ivl ms newInts
+--
+-- getIntervalsFromMapping :: Interval -> Mapping -> Interval
+-- getIntervalsFromMapping i m =
+--   let intStart = max (start i) (start $ interval m)
+--       intEnd = min (end i) (end $ interval m)
+--       diff = shift m
+--    in createInterval (intStart + diff) (intEnd + diff)
 
-getIntervalsFromMapping :: Interval -> Mapping -> Interval
-getIntervalsFromMapping i m =
-  let intStart = max (start i) (start $ interval m)
-      intEnd = min (end i) (end $ interval m)
-      diff = shift m
-   in createInterval (intStart + diff) (intEnd + diff)
+mapInterval :: Interval -> [Mapping] -> [Interval]
+mapInterval ival mps = mapInterval' ival (sort $ filter (mappingOverlaps ival) mps) []
+
+mapInterval' :: Interval -> [Mapping] -> [Maybe Interval] -> [Interval]
+mapInterval' ivl mps [] = mapInterval' ivl mps [mapStart ivl (head mps)] -- start case
+mapInterval' ivl [m] ivls = catMaybes $ mapEnd ivl m : ivls -- end case
+mapInterval' ivl (m1 : m2 : ms) ivls =
+  let mappedInterval = Just (applyMap m1 ivl)
+      fillGap = Just (Interval (end $ interval m1) (start (interval m1) - 1))
+   in mapInterval' ivl (m2 : ms) (fillGap : mappedInterval : ivls)
+
+applyMap :: Mapping -> Interval -> Interval
+applyMap m i = Interval (start i + shift m) (end i + shift m)
+
+mapStart :: Interval -> Mapping -> Maybe Interval
+mapStart ivl mp =
+  if start ivl < start (interval mp)
+    then Just (Interval (start ivl) (start (interval mp) - 1))
+    else Nothing
+
+mapEnd :: Interval -> Mapping -> Maybe Interval
+mapEnd ivl mp =
+  if end ivl > end (interval mp)
+    then Just (Interval (end (interval mp)) (end ivl))
+    else Nothing
 
 getMinInterval :: [Interval] -> Int
 getMinInterval ivls = minimum $ map start ivls
+
+mappingOverlaps :: Interval -> Mapping -> Bool
+mappingOverlaps i m = intervalsOverlap i (interval m)
 
 intervalsOverlap :: Interval -> Interval -> Bool
 intervalsOverlap i1 i2 = end i1 >= start i2 && start i1 <= end i2
