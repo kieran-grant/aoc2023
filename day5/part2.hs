@@ -26,12 +26,9 @@ main = do
   print seeds
   print (solve seeds maps)
 
--- start seed intervals, mappings for each level -> lowest location
 solve :: [Interval] -> [[Mapping]] -> Int
 solve ivals [] = getMinInterval ivals
 solve ivals (ms : mss) = solve (concatMap (mapInterval ms) ivals) mss
-
--- solve ivals (ms : mss) = concatMap (mapInterval ms) ivals
 
 mapInterval :: [Mapping] -> Interval -> [Interval]
 mapInterval mps ival = mapInterval' ival (sort $ filter (mappingOverlaps ival) mps) []
