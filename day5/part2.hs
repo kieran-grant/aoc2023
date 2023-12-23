@@ -23,13 +23,21 @@ main = do
   let seeds = getSeedIntervals $ getRawSeeds $ head ls
   let mapData = map getData (tail ls)
   let maps = map createMaps mapData
-  print (head seeds)
-  print $ mapInterval (head seeds) (head maps)
+  print seeds
+  print (solve seeds maps)
 
-mapInterval :: Interval -> [Mapping] -> [Interval]
-mapInterval ival mps = mapInterval' ival (sort $ filter (mappingOverlaps ival) mps) []
+-- start seed intervals, mappings for each level -> lowest location
+solve :: [Interval] -> [[Mapping]] -> Int
+solve ivals [] = getMinInterval ivals
+solve ivals (ms : mss) = solve (concatMap (mapInterval ms) ivals) mss
+
+-- solve ivals (ms : mss) = concatMap (mapInterval ms) ivals
+
+mapInterval :: [Mapping] -> Interval -> [Interval]
+mapInterval mps ival = mapInterval' ival (sort $ filter (mappingOverlaps ival) mps) []
 
 mapInterval' :: Interval -> [Mapping] -> [Interval] -> [Interval]
+mapInterval' ivl [] [] = [ivl]
 mapInterval' _ [] ivls = ivls -- base case where both lists are empty
 mapInterval' ivl (m : ms) [] = mapInterval' ivl ms (mapStart ivl m) -- start case
 mapInterval' ivl [m] ivls = ivls ++ mapEnd ivl m -- end case
