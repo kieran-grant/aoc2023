@@ -29,28 +29,34 @@ main = do
 mapInterval :: Interval -> [Mapping] -> [Interval]
 mapInterval ival mps = mapInterval' ival (sort $ filter (mappingOverlaps ival) mps) []
 
-mapInterval' :: Interval -> [Mapping] -> [Maybe Interval] -> [Interval]
-mapInterval' ivl mps [] = mapInterval' ivl mps [mapStart ivl (head mps)] -- start case
-mapInterval' ivl [m] ivls = catMaybes $ mapEnd ivl m : Just (applyMap m ivl) : ivls -- end case
-mapInterval' ivl (m1 : m2 : ms) ivls =
-  let mappedInterval = Just (applyMap m1 ivl)
-      fillGap = Just (Interval (end $ interval m1) (start (interval m1) - 1))
-   in mapInterval' ivl (m2 : ms) (fillGap : mappedInterval : ivls)
+mapInterval' :: Interval -> [Mapping] -> [Interval] -> [Interval]
+mapInterval' _ [] ivls = ivls -- base case where both lists are empty
+mapInterval' ivl (m : ms) [] = mapInterval' ivl ms (mapStart ivl m) -- start case
+mapInterval' ivl [m] ivls = ivls ++ mapEnd ivl m -- end case
+mapInterval' ivl (m : ms) ivls =
+  -- mapping inside interval
+  let mappedInterval = applyMap ivl m
+      fillGap = Interval (end $ interval m) (start (interval $ head ms) - 1)
+   in mapInterval' ivl ms (fillGap : mappedInterval : ivls)
 
-applyMap :: Mapping -> Interval -> Interval
-applyMap m i = Interval (start i + shift m) (end i + shift m)
+applyMap :: Interval -> Mapping -> Interval
+applyMap i m = Interval (shift m + start (interval m)) (shift m + end (interval m))
 
-mapStart :: Interval -> Mapping -> Maybe Interval
+mapStart :: Interval -> Mapping -> [Interval]
 mapStart ivl mp =
-  if start ivl < start (interval mp)
-    then Just (Interval (start ivl) (start (interval mp) - 1))
-    else Nothing
+  let mappingInterval = interval mp
+   in if start ivl < start mappingInterval -- if there is some interval before the fist map
+        then [Interval (start ivl) (start mappingInterval - 1), applyMap ivl mp] -- add id map to start, then apply map to rest
+        else [Interval (start ivl + shift mp) (min (end mappingInterval) (end ivl) + shift mp)]
 
-mapEnd :: Interval -> Mapping -> Maybe Interval
+-- otherwise apply map from start of interval to min(end interval, end mapping)
+
+mapEnd :: Interval -> Mapping -> [Interval]
 mapEnd ivl mp =
-  if end ivl > end (interval mp)
-    then Just (Interval (end (interval mp)) (end ivl))
-    else Nothing
+  let mappingInterval = interval mp
+   in if end ivl > end (interval mp) -- if there is still some interval left after the last mapping
+        then [applyMap ivl mp, Interval (end (interval mp) + 1) (end ivl)] -- apply the map, and add id map rest
+        else [Interval (max (start mappingInterval) (start ivl) + shift mp) (end ivl + shift mp)] -- otherwise apply map up to end of interval
 
 getMinInterval :: [Interval] -> Int
 getMinInterval ivls = minimum $ map start ivls
