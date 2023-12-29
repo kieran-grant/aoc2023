@@ -83,7 +83,7 @@ getHandFromLengthsAndJokers lens jokers = case (sortBy (comparing Ord.Down) lens
   _ -> OnePair
 
 getTotalWinnings :: [Hand] -> Int
-getTotalWinnings hands = sum $ zipWith (curry multiplyBidByRank) (sort hands) [1 ..]
+getTotalWinnings hands = sum $ zipWith multiplyBidByRank (sort hands) [1 ..]
 
-multiplyBidByRank :: (Hand, Int) -> Int
-multiplyBidByRank (h, i) = bid h * i
+multiplyBidByRank :: Hand -> Int -> Int
+multiplyBidByRank h i = bid h * i
