@@ -73,7 +73,7 @@ readStrToInt :: String -> Int
 readStrToInt str = read str :: Int
 
 getHandFromLengths :: [Int] -> HandType
-getHandFromLengths xs = case sortBy (comparing Ord.Down) xs of
+getHandFromLengths xs = case sortLens xs of
   [5] -> FiveOfAKind
   [4, _] -> FourOfAKind
   [3, 2] -> FullHouse
@@ -83,7 +83,7 @@ getHandFromLengths xs = case sortBy (comparing Ord.Down) xs of
   _ -> HighCard
 
 getHandFromLengthsAndJokers :: [Int] -> Int -> HandType
-getHandFromLengthsAndJokers lens jokers = case (sortBy (comparing Ord.Down) lens, jokers) of
+getHandFromLengthsAndJokers lens jokers = case (sortLens lens, jokers) of
   (_, 5) -> FiveOfAKind
   (_, 4) -> FiveOfAKind
   ([2], 3) -> FiveOfAKind
@@ -96,6 +96,9 @@ getHandFromLengthsAndJokers lens jokers = case (sortBy (comparing Ord.Down) lens
   ([2, 2], 1) -> FullHouse
   ([2, _, _], 1) -> ThreeOfAKind
   _ -> OnePair
+
+sortLens :: [Int] -> [Int]
+sortLens = sortBy (comparing Ord.Down)
 
 getTotalWinnings :: [Hand] -> Int
 getTotalWinnings hands = sum $ zipWith multiplyBidByRank (sort hands) [1 ..]
