@@ -9,7 +9,15 @@ main = do
   let hands = map parseLine ls
   print $ getTotalWinnings hands
 
-data HandType = HighCard | OnePair | TwoPair | ThreeOfAKind | FullHouse | FourOfAKind | FiveOfAKind deriving (Show, Ord, Eq)
+data HandType
+  = HighCard
+  | OnePair
+  | TwoPair
+  | ThreeOfAKind
+  | FullHouse
+  | FourOfAKind
+  | FiveOfAKind
+  deriving (Show, Ord, Eq)
 
 data Hand = Hand
   { cards :: String,
@@ -51,8 +59,15 @@ parseLine str = Hand c b t
 calculateHandType :: String -> HandType
 calculateHandType str =
   if 'J' `notElem` str
-    then getHandFromLengths (map length $ group $ sort str)
-    else getHandFromLengthsAndJokers (map length $ group $ sort $ filter (/= 'J') str) (length $ filter (== 'J') str)
+    then getHandFromLengths (map length $ groupChars str)
+    else
+      getHandFromLengthsAndJokers
+        (map length $ groupChars strWithoutJokers)
+        (length strWithJokers)
+  where
+    strWithoutJokers = filter (/= 'J') str
+    strWithJokers = filter (== 'J') str
+    groupChars = group . sort
 
 readStrToInt :: String -> Int
 readStrToInt str = read str :: Int
