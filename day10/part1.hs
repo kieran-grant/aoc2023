@@ -1,6 +1,5 @@
 import Data.Array.Unboxed
-import Data.List (elemIndices)
-import Data.Maybe (catMaybes)
+import Data.Maybe (mapMaybe)
 
 data Direction = North | East | South | West
 
@@ -8,12 +7,12 @@ type Coord = (Int, Int)
 
 type CharArray = UArray Coord Char
 
+main :: IO ()
 main = do
   contents <- readFile "input.txt"
   let cArr = toArray $ lines contents
   let (start, dir) = getStart cArr
   let path = buildPath cArr start dir []
-  -- print $ reverse path
   print $ length path `quot` 2
 
 getStart :: CharArray -> (Coord, Direction)
@@ -22,43 +21,23 @@ getStart cArr =
       surroundingPipes = findSurroundingPipes cArr startCoords
    in (startCoords, head surroundingPipes)
 
--- getStart cArr =
-
 findSurroundingPipes :: CharArray -> Coord -> [Direction]
 findSurroundingPipes cArr start =
-  catMaybes $ [findNorth cArr, findEast cArr, findSouth cArr, findWest cArr] <*> pure start
+  mapMaybe (find cArr start) [North, East, South, West]
 
-findNorth :: CharArray -> Coord -> Maybe Direction
-findNorth cArr start =
-  let nextCoord = move start North
+find :: CharArray -> Coord -> Direction -> Maybe Direction
+find cArr start dir =
+  let nextCoord = move start dir
       ch = cArr ! nextCoord
-   in if ch `elem` "7|F"
-        then Just North
+   in if ch `elem` getValidPipes dir
+        then Just dir
         else Nothing
 
-findEast :: CharArray -> Coord -> Maybe Direction
-findEast cArr start =
-  let nextCoord = move start East
-      ch = cArr ! nextCoord
-   in if ch `elem` "7-J"
-        then Just East
-        else Nothing
-
-findSouth :: CharArray -> Coord -> Maybe Direction
-findSouth cArr start =
-  let nextCoord = move start South
-      ch = cArr ! nextCoord
-   in if ch `elem` "J|L"
-        then Just South
-        else Nothing
-
-findWest :: CharArray -> Coord -> Maybe Direction
-findWest cArr start =
-  let nextCoord = move start West
-      ch = cArr ! nextCoord
-   in if ch `elem` "L-F"
-        then Just West
-        else Nothing
+getValidPipes :: Direction -> String
+getValidPipes North = "7|F"
+getValidPipes East = "-7J"
+getValidPipes South = "|JL"
+getValidPipes West = "-FL"
 
 findElementCoords :: CharArray -> Char -> Coord
 findElementCoords cArr target =
@@ -83,17 +62,12 @@ handleTurn cArr next dir path =
     'L' -> buildPath cArr next (turnL dir) path
     _ -> buildPath cArr next dir path
 
-nextDir :: Char -> Direction -> Direction
-nextDir ch dir = case ch of {}
-
 move :: Coord -> Direction -> Coord
 move (row, col) dir = case dir of
   North -> (row - 1, col)
   West -> (row, col - 1)
   South -> (row + 1, col)
   East -> (row, col + 1)
-
--- Util functions
 
 turnR :: Direction -> Direction -- 7/L
 turnR North = East
@@ -112,6 +86,6 @@ toArray lists =
   let rows = length lists
       cols = case lists of
         [] -> 0
-        (x : xs) -> length x
+        (x : _) -> length x
       bounds = ((0, 0), (rows - 1, cols - 1))
    in listArray bounds $ concat lists
