@@ -1,4 +1,5 @@
 import Data.Array.Unboxed
+import Data.List (tails)
 import Data.Maybe (mapMaybe)
 
 data Direction = North | East | South | West
@@ -13,7 +14,15 @@ main = do
   let cArr = toArray $ lines contents
   let (start, dir) = getStart cArr
   let path = buildPath cArr start dir []
-  print $ length path `quot` 2
+  let solution = picksTheorem (shoelace path) (length path)
+  print solution
+
+picksTheorem :: Int -> Int -> Int
+picksTheorem area perimeter = area - (perimeter `quot` 2) + 1
+
+shoelace :: [Coord] -> Int
+shoelace path =
+  abs $ sum [(y1 + y2) * (x1 - x2) | (y1, x1) : (y2, x2) : _ <- tails path] `quot` 2
 
 getStart :: CharArray -> (Coord, Direction)
 getStart cArr =
