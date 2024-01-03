@@ -6,3 +6,6 @@
 # haskell build files
 *.o
 *.hi
+
+# dont add text files 
+*.txt
