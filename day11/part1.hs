@@ -1,23 +1,17 @@
-import Data.Array.Unboxed
 import Data.List (tails, transpose)
 
 type Coord = (Int, Int)
 
-type CharArray = UArray Coord Char
-
+main :: IO ()
 main = do
   content <- readFile "input.txt"
   let ls = lines content
-  -- let cArr = toArray ls
   let emptyRows = getEmpty ls
   let emptyCols = getEmpty $ transpose ls
-  let cArr = toArray ls
-  let galaxies = findElementCoords cArr '#'
+  let galaxies = findCoordinates '#' ls
   let galaxyPairs = getPairs galaxies
-  -- mapM_ print ls
-  -- print galaxies
-  -- print $ length galaxyPairs
-  print $ sum $ map (getDistance emptyRows emptyCols) galaxyPairs
+  let distanceFunc = getDistance emptyRows emptyCols
+  print $ sum $ map distanceFunc galaxyPairs
 
 getDistance :: [Int] -> [Int] -> (Coord, Coord) -> Int
 getDistance emptyRows emptyCols ((y1, x1), (y2, x2)) =
@@ -38,20 +32,10 @@ manhattan (y1, x1) (y2, x2) = abs (x1 - x2) + abs (y1 - y2)
 getPairs :: [Coord] -> [(Coord, Coord)]
 getPairs l = [(x, y) | (x : ys) <- tails l, y <- ys]
 
-findElementCoords :: CharArray -> Char -> [Coord]
-findElementCoords cArr target =
-  let ((minRow, minCol), (maxRow, maxCol)) = bounds cArr
-      indices = [(i, j) | i <- [minRow .. maxRow], j <- [minCol .. maxCol], cArr ! (i, j) == target]
-   in indices
+findCoordinates :: Char -> [[Char]] -> [(Int, Int)]
+findCoordinates targetChar grid =
+  concatMap (\(rowIndex, row) -> [(rowIndex, colIndex) | (colIndex, char) <- zip [0 ..] row, char == targetChar]) $
+    zip [0 ..] grid
 
 getEmpty :: [[Char]] -> [Int]
 getEmpty cArr = [i | (row, i) <- zip cArr [0 ..], all (== '.') row]
-
-toArray :: [[Char]] -> CharArray
-toArray lists =
-  let rows = length lists
-      cols = case lists of
-        [] -> 0
-        (x : _) -> length x
-      bounds = ((0, 0), (rows - 1, cols - 1))
-   in listArray bounds $ concat lists
