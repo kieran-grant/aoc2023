@@ -1,29 +1,4 @@
-import Control.Monad (replicateM)
-import Data.List (elemIndices, group)
 import Data.List.Split (splitOn)
-
-replaceChars :: Char -> [Char] -> String -> [String]
-replaceChars ch replacements str =
-  let indices = elemIndices ch str -- get indices of ?
-      combs = replicateM (length indices) replacements -- get all combinations of replacements
-   in map (replaceAtIndex str indices) combs -- create a string per replacement
-
-replaceAtIndex :: String -> [Int] -> [Char] -> String
-replaceAtIndex str indices replacements =
-  foldl (\acc (i, r) -> replaceAt i r acc) str (zip indices replacements)
-
-replaceAt :: Int -> Char -> String -> String
-replaceAt i r str =
-  take i str ++ [r] ++ drop (i + 1) str
-
-stringCombinations :: String -> [String]
-stringCombinations = replaceChars '?' ['.', '#']
-
-valid :: [Int] -> String -> Bool
-valid ints str = subsequenceLengths str == ints
-
-subsequenceLengths :: String -> [Int]
-subsequenceLengths str = map length (filter (elem '#') (group str))
 
 parse :: String -> (String, [Int])
 parse str = (head wds, toIntList $ last wds)
@@ -34,13 +9,35 @@ toIntList :: String -> [Int]
 toIntList str = map (\x -> read x :: Int) (splitOn "," str)
 
 getValids :: String -> Int
-getValids str = length $ filter (valid ints) $ stringCombinations records
+getValids str = countWays records ints
   where
     (records, ints) = parse str
 
-main :: IO ()
 main = do
-  content <- readFile "input.txt"
+  content <- readFile "sample.txt" -- ???.### 1,1,3
   let ls = lines content
+  print $ last ls
   let soln = map getValids ls
-  print $ sum soln
+  mapM print soln
+
+countWays :: String -> [Int] -> Int
+countWays [] [] = 1 -- if line length === 0 and runs length === 0 return 1
+countWays [] _ = 0 -- if line length === 0 and runs length > 0 return 0
+countWays xs [] = if '#' `elem` xs then 0 else 1 -- if run lengths == 0, check whether rest of line contains #
+countWays (c : cs) (n : ns) =
+  if length (c : cs) < sum (n : ns) + length (n : ns) - 1 -- can't fit run
+    then 0
+    else case c of
+      '.' -> countWays cs (n : ns)
+      '#' ->
+        if ('.' `elem` take (n - 1) cs) || ((n - 1 < length cs) && ((c : cs) !! n == '#'))
+          then 0
+          else countWays (drop n cs) ns
+      '?' -> countWays ('.' : cs) (n : ns) + countWays ('#' : cs) (n : ns)
+
+-- if n == 1
+--   then
+--     if not (null cs) && head cs == '#'
+--       then 0
+--       else countWays cs ns
+--   else countWays cs ((n - 1) : ns)
