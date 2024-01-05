@@ -1,4 +1,4 @@
-import Data.Function.Memoize (memoize, memoize2)
+import Data.Function.Memoize (memoize2)
 import Data.List.Split (splitOn)
 
 main :: IO ()
