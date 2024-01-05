@@ -1,3 +1,4 @@
+import Data.Function.Memoize (memoize, memoize2)
 import Data.List.Split (splitOn)
 
 main :: IO ()
@@ -6,6 +7,7 @@ main = do
   let ls = lines content
   let soln = map getValids ls
   print soln
+  print $ sum soln
 
 parse :: String -> (String, [Int])
 parse str = (head wds, toIntList $ last wds)
@@ -23,17 +25,19 @@ getValids str = countWays repeatedRecords repeatedInts
     repeatedInts = concat $ replicate 5 ints
 
 countWays :: String -> [Int] -> Int
-countWays [] [] = 1
-countWays [] _ = 0
-countWays xs [] = if '#' `elem` xs then 0 else 1
-countWays (c : cs) (n : ns) =
-  if length (c : cs) < sum (n : ns) + length (n : ns) - 1 -- can't fit run
-    then 0
-    else case c of
-      '.' -> countWays cs (n : ns)
-      '?' -> countWays ('.' : cs) (n : ns) + countWays ('#' : cs) (n : ns)
-      '#' ->
-        if ('.' `elem` take (n - 1) cs) || ((n - 1 < length cs) && (cs !! (n - 1) == '#'))
-          then 0
-          else countWays (drop n cs) ns
-      _ -> error "Not a recognised character!"
+countWays = memoize2 countWays'
+  where
+    countWays' [] [] = 1
+    countWays' [] _ = 0
+    countWays' xs [] = if '#' `elem` xs then 0 else 1
+    countWays' k@(c : cs) v@(n : ns) =
+      if length (c : cs) < sum (n : ns) + length (n : ns) - 1 -- can't fit run
+        then 0
+        else case c of
+          '.' -> countWays cs (n : ns)
+          '?' -> countWays ('.' : cs) (n : ns) + countWays ('#' : cs) (n : ns)
+          '#' ->
+            if ('.' `elem` take (n - 1) cs) || ((n - 1 < length cs) && (cs !! (n - 1) == '#'))
+              then 0
+              else countWays (drop n cs) ns
+          _ -> error "Not a recognised character!"
