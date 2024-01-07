@@ -19,7 +19,7 @@ main = do
   let soln = cy !! idx
   print soln
 
--- cycle detection algorithm
+-- Floyd's cycle detection algorithm (https://wiki.haskell.org/Floyd%27s_cycle-finding_algorithm)
 findCycle :: (Eq a) => [a] -> ([a], [a])
 findCycle xxs = fCycle xxs xxs
   where
