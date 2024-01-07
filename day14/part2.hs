@@ -6,31 +6,20 @@ type RoundCount = Int
 
 main :: IO ()
 main = do
-  content <- readFile "sample.txt"
+  content <- readFile "input.txt"
   let ls = lines content
-  -- let soln = hammer spinCycle ls
-  let loads = map totalNorthLoad (take 50 $ iterate spinCycle ls)
-  print loads
+  let loads = map totalNorthLoad (iterate spinCycle ls)
 
-  -- let (st, cy) = findCycle (drop 4 loads)
-  -- print st
-  -- print cy
+  let (st, cy) = findCycle loads
 
-  -- let startIndex = 1 + length st
-  -- let cycleLength = length cy
-  -- let idx = billionth = ()
+  let startIndex = length st
+  let cycleLength = length cy
 
-  let initial = 3
-  let cycleLength = 7
-  let idx = ((1000000000 - initial) `mod` cycleLength) + initial
-  let billionth = totalNorthLoad (iterate spinCycle ls !! idx)
-  print idx
-  print billionth
+  let idx = (1000000000 - startIndex) `mod` cycleLength
+  let soln = cy !! idx
+  print soln
 
---
---
--- mapM_ print soln
-
+-- cycle detection algorithm
 findCycle :: (Eq a) => [a] -> ([a], [a])
 findCycle xxs = fCycle xxs xxs
   where
@@ -57,22 +46,6 @@ spinCycle grid = iterate rotAndPush grid !! 4
 rotAndPush :: [[Char]] -> [[Char]]
 rotAndPush = pushEast . rotR
 
-pushNorth :: [[Char]] -> [[Char]]
-pushNorth = rotL . pushEast . rotR
-
-pushWest :: [[Char]] -> [[Char]]
-pushWest = rotL . rotL . pushEast . rotR . rotR
-
-hammer :: (Eq a) => (a -> a) -> a -> a
-hammer f x
-  | x' == x = x'
-  | otherwise = hammer f x'
-  where
-    x' = f x
-
--- pushSouth :: [[Char]] -> [[Char]]
--- pushSouth = rotR . pushEast . rotL
---
 pushEast :: [[Char]] -> [[Char]]
 pushEast = map pushR
 
@@ -85,9 +58,6 @@ pushRLoop (x : xs) (eC, rC) acc = case x of
   '.' -> pushRLoop xs (eC + 1, rC) acc
   'O' -> pushRLoop xs (eC, rC + 1) acc
   '#' -> pushRLoop xs (0, 0) (acc ++ replicate eC '.' ++ replicate rC 'O' ++ "#")
-
-rotL :: [[a]] -> [[a]]
-rotL = reverse . transpose
 
 rotR :: [[a]] -> [[a]]
 rotR = transpose . reverse
