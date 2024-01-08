@@ -14,30 +14,27 @@ instance Eq Lens where
 
 type HashMap = Array Int [Lens]
 
+main :: IO ()
 main = do
   content <- readFile "input.txt"
   let input = splitOn "," $ head $ lines content
-  let initialMap = listArray (0, 255) (replicate 256 [])
-  let updated = foldl handleString initialMap input
-  let soln = sum $ map (calc updated) [0 .. 255]
-  -- mapM_ print updated
-  print soln
+  print $ solve input
 
-calc :: HashMap -> Int -> Int
-calc hMap box =
+solve :: [[Char]] -> Int
+solve input =
+  let initialMap = listArray (0, 255) (replicate 256 [])
+      updatedMap = foldl handleString initialMap input
+   in sum $ map (calculatePower updatedMap) [0 .. 255]
+
+calculatePower :: HashMap -> Int -> Int
+calculatePower hMap box =
   let vals = hMap ! box
       input = zip vals [1 ..]
       power = map (focussingPower box) input
    in sum power
 
 focussingPower :: Int -> (Lens, Int) -> Int
--- focussingPower _ [] = 0
 focussingPower boxNumber (l, m) = (1 + boxNumber) * m * focalLength l
-
--- print $ solve input
-
-solve :: [[Char]] -> Int
-solve input = sum $ map hash input
 
 handleString :: HashMap -> String -> HashMap
 handleString hashMap str
@@ -66,7 +63,7 @@ tryRemove hMap key =
    in hMap // [(bucket, newVal)]
 
 remove :: [Lens] -> String -> [Lens]
-remove [] str = []
+remove [] _ = []
 remove (x : xs) str =
   if label x == str
     then xs
@@ -86,6 +83,3 @@ splitEqual str = case elemIndex '=' str of
 
 hash :: [Char] -> Int
 hash = foldl (\acc c -> ((acc + ord c) * 17) `mod` 256) 0
-
-strToInt :: String -> Int
-strToInt str = read str :: Int
