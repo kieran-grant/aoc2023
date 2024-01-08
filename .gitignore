@@ -7,3 +7,5 @@
 *.o
 *.hi
 
+input.txt
+
