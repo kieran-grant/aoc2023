@@ -1,10 +1,12 @@
+import Data.Array.IArray
 import Data.Array.Unboxed
 import Data.List (nub)
-import Data.MemoTrie (memo2)
 
 data Direction = North | East | South | West deriving (Show, Eq)
 
 type Coord = (Int, Int)
+
+type Beam = (Coord, Direction)
 
 type CharArray = UArray Coord Char
 
@@ -12,24 +14,44 @@ main :: IO ()
 main = do
     contents <- readFile "input.txt"
     let cArr = toArray $ lines contents
-    let energized = buildPath cArr [] (0, 0) East
+    let energized = search cArr [] [((0, 0), South)]
+
+    (print . reverse) [(x + 1, y + 1) | (x, y) <- energized]
     (print . length . nub) energized
 
-buildPath :: CharArray -> [(Coord, Direction)] -> Coord -> Direction -> [Coord] -- alter this function to maintain a list of todo states, do the todo at the end
-buildPath cArr visited curr dir =
-    let next = move curr dir
-        newVisited = (curr, dir) : visited
-        f = buildPath cArr newVisited next
-     in if outOfBounds cArr next || ((curr, dir) `elem` visited)
-            then curr : [x | (x, _) <- visited]
-            else case (cArr ! next, dir) of
-                ('/', _) -> f (turnR dir)
-                ('\\', _) -> f (turnL dir)
-                ('-', North) -> f West ++ f East
-                ('-', South) -> f West ++ f East
-                ('|', East) -> f North ++ f South
-                ('|', West) -> f North ++ f South
-                _ -> f dir
+search :: CharArray -> [Beam] -> [Beam] -> [Coord]
+search _ visited [] = [x | (x, _) <- visited]
+search grid visited ((pos, dir) : xs) =
+    if (pos, dir) `elem` visited
+        then search grid visited xs
+        else
+            let nextPos = move pos dir
+             in if outOfBounds grid nextPos
+                    then search grid ((pos, dir) : visited) xs
+                    else case (grid ! nextPos, dir) of
+                        ('.', _) -> search grid ((pos, dir) : visited) ((nextPos, dir) : xs)
+                        ('/', _) -> search grid ((pos, dir) : visited) ((nextPos, turnR dir) : xs)
+                        ('\\', _) -> search grid ((pos, dir) : visited) ((nextPos, turnL dir) : xs)
+                        ('-', North) -> search grid ((pos, dir) : visited) ((nextPos, West) : (nextPos, East) : xs)
+                        ('-', South) -> search grid ((pos, dir) : visited) ((nextPos, West) : (nextPos, East) : xs)
+                        ('|', East) -> search grid ((pos, dir) : visited) ((nextPos, North) : (nextPos, South) : xs)
+                        ('|', West) -> search grid ((pos, dir) : visited) ((nextPos, North) : (nextPos, South) : xs)
+                        _ -> search grid ((pos, dir) : visited) ((nextPos, dir) : xs)
+
+-- ('|', West) -> search grid ((here, dir) : visited) ((nextTile, North) : (nextTile, South) : xs)
+
+{-
+            let continueSearch = search grid ((here, dir) : visited)
+                nextLoc = move here dir
+             in case (grid ! nextLoc, dir) of -- some logic error here, should maybe be next?
+                    ('/', _) -> continueSearch ((nextLoc, turnR dir) : xs)
+                    ('\\', _) -> continueSearch ((nextLoc, turnL dir) : xs)
+                    ('-', North) -> continueSearch ((nextLoc, West) : (nextLoc, East) : xs)
+                    ('-', South) -> continueSearch ((nextLoc, West) : (nextLoc, East) : xs)
+                    ('|', East) -> continueSearch ((nextLoc, North) : (nextLoc, South) : xs)
+                    ('|', West) -> continueSearch ((nextLoc, North) : (nextLoc, South) : xs)
+                    _ -> continueSearch ((nextLoc, dir) : xs)
+                    -}
 
 outOfBounds :: CharArray -> Coord -> Bool -- check if move would go out of bounds
 outOfBounds cArr (row, col) =
