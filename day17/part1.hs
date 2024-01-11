@@ -1,56 +1,69 @@
+import Algorithm.Search (aStar)
 import Data.Array.Unboxed
 import Data.Char (digitToInt)
-import Data.HashMap.Strict qualified as Map
-import Data.HashSet qualified as Set
 import Data.Hashable
-import Data.List (foldl')
 import Data.Maybe (fromJust)
-import Data.PQueue.Prio.Min qualified as PQ
-import GHC.Data.Graph.UnVar (neighbors)
-import GHC.Generics
 
 type Coord = (Int, Int)
 
-data Direction = North | East | South | West deriving (Show, Eq)
+data Direction = North | East | South | West deriving (Show, Eq, Ord)
 
-instance Hashable Direction where
-  hashWithSalt salt North = hashWithSalt salt (0 :: Int)
-  hashWithSalt salt East = hashWithSalt salt (1 :: Int)
-  hashWithSalt salt South = hashWithSalt salt (2 :: Int)
-  hashWithSalt salt West = hashWithSalt salt (3 :: Int)
-
-type Node = (Coord, Direction)
+data Move = Move
+  { position :: Coord,
+    direction :: Direction,
+    consecutive :: Int
+  }
+  deriving (Show, Ord, Eq)
 
 type Grid = UArray Coord Int
 
 main = do
   contents <- readFile "sample.txt"
   let iArr = (toGrid . charGridToIntGrid . lines) contents
-  let (_, goalNode) = bounds iArr
+  let (_, goalCoord) = bounds iArr
 
-  let result = aStarSearch ((0, 0), South) ((== goalNode) . fst) (getNeighbors iArr) (manhattan goalNode)
-  print result
+  let startNode = Move (-1, 0) East (-1)
+  let result = aStar (getNeighbors iArr 3) (getNeighborCosts iArr) (manhattan goalCoord) ((== goalCoord) . position) startNode
+  print $ (fst . fromJust) result
 
-getNeighbors :: Grid -> Node -> [(Node, Int)] -- neighbors and their costs (g(n))
-getNeighbors grid ((row, col), dir) = [(n, grid ! fst n) | n <- filteredNeighbors]
+opposite :: Direction -> Direction
+opposite North = South
+opposite East = West
+opposite South = North
+opposite West = East
+
+addDirection :: Direction -> Coord -> Coord
+addDirection North (row, col) = (row - 1, col)
+addDirection East (row, col) = (row, col + 1)
+addDirection South (row, col) = (row + 1, col)
+addDirection West (row, col) = (row, col - 1)
+
+getNeighborCosts :: Grid -> Move -> Move -> Int
+getNeighborCosts grid _ (Move c _ _)
+  | c == (0, 0) = 0
+  | otherwise = grid ! c
+
+getNeighbors :: Grid -> Int -> Move -> [Move] -- neighbors and their costs (g(n))
+getNeighbors grid max (Move pos dir n) = neighbors
   where
     neighbors =
-      filter
-        (not . outOfBounds grid . fst)
-        [ ((row + 1, col), South),
-          ((row - 1, col), North),
-          ((row, col + 1), East),
-          ((row, col - 1), West)
-        ]
-    filteredNeighbors = filter ((/= dir) . snd) neighbors
+      filter ((<= max) . consecutive)
+        . filter (not . outOfBounds grid . position)
+        . map (\x -> Move (addDirection x pos) x (updateConsec x))
+        . filter (/= opposite dir)
+        $ [North, South, East, West]
+    updateConsec dir'
+      | dir' == dir = n + 1
+      | n < 0 = 0 -- start node
+      | otherwise = 1
 
 outOfBounds :: Grid -> Coord -> Bool
 outOfBounds grid (row, col) = row < 0 || row > rowBounds || col < 0 || col > colBounds
   where
     (_, (rowBounds, colBounds)) = bounds grid
 
-manhattan :: Coord -> Node -> Int -- h(n)
-manhattan (y1, x1) ((y2, x2), _) = abs (x1 - x2) + abs (y1 - y2)
+manhattan :: Coord -> Move -> Int -- h(n)
+manhattan (y1, x1) (Move (y2, x2) _ _) = abs (x1 - x2) + abs (y1 - y2)
 
 charGridToIntGrid :: [[Char]] -> [[Int]]
 charGridToIntGrid = map (map digitToInt)
@@ -63,37 +76,3 @@ toGrid lists =
         (x : _) -> length x
       bnds = ((0, 0), (rows - 1, cols - 1))
    in listArray bnds $ concat lists
-
--- from https://gist.github.com/abhin4v/8172534
-aStarSearch :: Node -> (Node -> Bool) -> (Node -> [(Node, Int)]) -> (Node -> Int) -> Maybe (Int, [Node])
-aStarSearch startNode isGoalNode nextNodeFn heuristic =
-  astar
-    (PQ.singleton (heuristic startNode) (startNode, 0))
-    Set.empty
-    (Map.singleton startNode 0)
-    Map.empty
-  where
-    astar pq seen gscore tracks
-      | PQ.null pq = Nothing
-      | isGoalNode node = Just (gcost, findPath tracks node)
-      | Set.member node seen = astar pq' seen gscore tracks
-      | otherwise = astar pq'' seen' gscore' tracks'
-      where
-        (node, gcost) = snd . PQ.findMin $ pq
-        pq' = PQ.deleteMin pq
-        seen' = Set.insert node seen
-        successors =
-          filter
-            ( \(s, g, _) ->
-                not (Set.member s seen')
-                  && (not (s `Map.member` gscore) || g < (fromJust . Map.lookup s $ gscore))
-            )
-            $ successorsAndCosts node gcost
-        pq'' = foldl' (\q (s, g, h) -> PQ.insert (g + h) (s, g) q) pq' successors
-        gscore' = foldl' (\m (s, g, _) -> Map.insert s g m) gscore successors
-        tracks' = foldl' (\m (s, _, _) -> Map.insert s node m) tracks successors
-    successorsAndCosts node gcost = map (\(s, g) -> (s, gcost + g, heuristic s)) . nextNodeFn $ node
-    findPath tracks node =
-      if Map.member node tracks
-        then findPath tracks (fromJust . Map.lookup node $ tracks) ++ [node]
-        else [node]
