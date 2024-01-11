@@ -19,15 +19,15 @@ type Grid = UArray Coord Int
 main = do
   contents <- readFile "input.txt"
   let iArr = (toGrid . charGridToIntGrid . lines) contents
-  let result = findMinHeatLoss 3 iArr
+  let result = findMinHeatLoss 4 10 iArr
   print result
 
-findMinHeatLoss :: Int -> Grid -> Int
-findMinHeatLoss max grid = fst . fromJust . aStar getNext getCost h isGoal $ start
+findMinHeatLoss :: Int -> Int -> Grid -> Int
+findMinHeatLoss min max grid = fst . fromJust . aStar getNext getCost h isGoal $ start
   where
-    getNext = getNeighbors max `pruning` (outOfBounds grid . position)
+    getNext = getNeighbors min max `pruning` (outOfBounds grid . position)
     getCost _ ns = grid ! position ns
-    isGoal m = position m == end
+    isGoal m = position m == end && min <= consecutive m
     h = manhattan end
 
     (_, end) = bounds grid
@@ -45,8 +45,10 @@ addDirection East (row, col) = (row, col + 1)
 addDirection South (row, col) = (row + 1, col)
 addDirection West (row, col) = (row, col - 1)
 
-getNeighbors :: Int -> Node -> [Node] -- neighbors and their costs (g(n))
-getNeighbors max (Node pos dir n) = neighbors
+getNeighbors :: Int -> Int -> Node -> [Node] -- neighbors and their costs (g(n))
+getNeighbors min max (Node pos dir n)
+  | continue = filter ((== dir) . direction) neighbors
+  | otherwise = neighbors
   where
     neighbors =
       filter ((<= max) . consecutive)
@@ -57,6 +59,7 @@ getNeighbors max (Node pos dir n) = neighbors
       | dir' == dir = n + 1
       | n <= 0 = n + 1 -- start node
       | otherwise = 1
+    continue = 0 < n && n < min
 
 outOfBounds :: Grid -> Coord -> Bool
 outOfBounds grid (row, col) = row < 0 || row > rowBounds || col < 0 || col > colBounds
