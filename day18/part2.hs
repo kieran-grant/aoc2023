@@ -1,11 +1,7 @@
-import Data.Bifunctor (first)
 import Data.Char (digitToInt, toUpper)
 import Data.List (tails)
-import GHC.Driver.Pipeline (fullPipeline)
 
 type Coord = (Int, Int)
-
-type Colour = String
 
 data Direction
   = North
@@ -16,52 +12,40 @@ data Direction
 
 data Instruction = Instruction
   { dir :: Direction,
-    steps :: Int,
-    colour :: Colour
-  }
-  deriving (Show, Eq)
-
-data Trench = Trench
-  { loc :: Coord,
-    col :: Colour
+    steps :: Int
   }
   deriving (Show, Eq)
 
 main = do
   contents <- readFile "input.txt"
   let instructions = map parseLine (lines contents)
-  let (path, e) = followPath instructions
-  let fullPath = map loc path
-  let solution = picksTheorem (shoelace fullPath) (length fullPath)
-  print (solution + length fullPath)
+  let (path, perimLen) = followPath instructions
+  let solution = perimLen + picksTheorem (shoelace path) perimLen
+  print solution
 
-followPath :: [Instruction] -> ([Trench], Coord)
+followPath :: [Instruction] -> ([Coord], Int) -- vertices and perimeter length
 followPath =
-  foldl (\(pth, l) inst -> let res = follow l inst in first (pth ++) res) ([], (0, 0))
+  foldl
+    ( \(pathAcc, perim) inst ->
+        let res = follow (head pathAcc) inst
+         in (fst res : pathAcc, perim + snd res)
+    )
+    ([(0, 0)], 0)
 
-follow :: Coord -> Instruction -> ([Trench], Coord)
-follow s i = (res, (loc . last) res)
-  where
-    res = follow' s i
+follow :: Coord -> Instruction -> (Coord, Int)
+follow s (Instruction d l) = (addDirection d s l, l)
 
-follow' :: Coord -> Instruction -> [Trench]
-follow' _ (Instruction _ 0 _) = []
-follow' last (Instruction d n c) =
-  Trench next c : follow' next (Instruction d (n - 1) c)
-  where
-    next = addDirection d last
-
-addDirection :: Direction -> Coord -> Coord
-addDirection North (row, col) = (row - 1, col)
-addDirection East (row, col) = (row, col + 1)
-addDirection South (row, col) = (row + 1, col)
-addDirection West (row, col) = (row, col - 1)
+addDirection :: Direction -> Coord -> Int -> Coord
+addDirection North (row, col) n = (row - n, col)
+addDirection East (row, col) n = (row, col + n)
+addDirection South (row, col) n = (row + n, col)
+addDirection West (row, col) n = (row, col - n)
 
 parseLine :: String -> Instruction
 parseLine = toInstruction . words
 
 toInstruction :: [String] -> Instruction
-toInstruction (_ : _ : c : _) = Instruction d n c
+toInstruction (_ : _ : c : _) = Instruction d n
   where
     trimmed = (reverse . drop 1 . reverse . drop 2) c
     d = case last trimmed of
