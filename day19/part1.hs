@@ -19,17 +19,13 @@ type Workflow = (Part -> Bool, Outcome)
 
 type WorkflowMap = M.Map String [Workflow]
 
-instance Show (Part -> Bool) where 
-    show f = "A function"
-
 main = do 
     contents <- readFile "input.txt"
-    let ls = lines contents
-    let (workflows : partStr : _) = getLineGroups ls
-    let workMap = (M.fromList . map parseWorkflow) workflows
-    let parts = map parsePart partStr
-    let solns = map (getOutcome workMap) parts
-    let soln = sum [sumPart p | (p, s) <- zip parts solns, s == Accept]
+    let (rawWorkflows : rawParts : _) = (getLineGroups . lines) contents
+    let workMap = (M.fromList . map parseWorkflow) rawWorkflows
+    let parts = map parsePart rawParts
+    let outcomes = map (getOutcome workMap) parts
+    let soln = sum [sumPart p | (p, s) <- zip parts outcomes, s == Accept]
     print soln
 
 getOutcome :: WorkflowMap -> Part -> Outcome
