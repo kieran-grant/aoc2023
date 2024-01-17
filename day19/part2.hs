@@ -24,37 +24,23 @@ type Workflow = (Selector, Int -> Bool, Outcome)
 
 type WorkflowMap = M.Map String [Workflow]
 
-instance Show (Int -> Bool) where 
-   show f = "Function" 
-
+main :: IO()
 main = do 
-    contents <- readFile "sample.txt"
-    let (rawWorkflows : rawParts : _) = (getLineGroups . lines) contents
+    contents <- readFile "input.txt"
+    let (rawWorkflows : _) = (getLineGroups . lines) contents
     let workMap = (M.fromList . map parseWorkflow) rawWorkflows
-    -- let parts = map parsePart rawParts
-    let initialPart = Part (1,4000) (1,4000) (1,4000) (1,4000)
-    -- let outcomes = map (getOutcome workMap) initialPart
-    let tempSol = getOutcome workMap initialPart
-    let summed = map partToCombinations tempSol
-    print tempSol
-    print summed
-    print (sum summed)
+    let acceptedParts = getOutcome workMap 
+    let soln = (sum . map partToCombinations) acceptedParts
+    print soln
 
-getOutcome :: WorkflowMap -> Part -> [Part]
-getOutcome mp initialPart = getOutcome' mp initialPart "in"
+getOutcome :: WorkflowMap -> [Part]
+getOutcome mp = getOutcome' mp (Part (1,4000) (1,4000) (1,4000) (1,4000)) "in"
 
-decider :: WorkflowMap -> (Part, Outcome) -> [Part]
-decider mp (prt, outcome) = case outcome of 
-    Accept -> [prt] 
-    Reject -> []
-    Refer s -> getOutcome' mp prt s 
-            
--- TODO: WORK ON THIS!
 getOutcome' :: WorkflowMap -> Part -> String -> [Part] 
 getOutcome' mp pt st = 
     let partsAndOutcomes = go (mp M.! st) pt
         accepted = [p | (p,o) <- partsAndOutcomes, o == Accept]
-        referred = [x | x@(p,o) <- partsAndOutcomes, o /= Accept && o /= Reject]
+        referred = [x | x@(_,o) <- partsAndOutcomes, o /= Accept && o /= Reject]
     in if  null referred 
       then accepted 
       else accepted ++ concatMap getReferOutcomes referred 
@@ -66,11 +52,9 @@ partToCombinations p = (rangeToNum . x) p * (rangeToNum . m) p * (rangeToNum . a
 
 rangeToNum :: Range -> Int 
 rangeToNum (s,e) = e - s + 1 
-        
-
 
 go :: [Workflow] -> Part -> [(Part, Outcome)]
-go ((Any, _, o):xs) part = [(part, o)]
+go ((Any, _, o):_) part = [(part, o)]
 go ((s, f, o):xs) part = 
     let selectorFn = selectorToFunction s
         (good, bad) = (applyPartition f . selectorFn) part
@@ -78,18 +62,9 @@ go ((s, f, o):xs) part =
         badPart = partFromRange part s bad
     in if null bad then [(goodPart, o)] else (goodPart, o) : go xs badPart
 
-     -- if f part 
-     --    then o 
-     --    else go xs part
-
-getParts :: [(Part, Outcome)] -> Outcome -> [Part]
-getParts xs outcome = [p | (p,o) <- xs, o == outcome]
-
-
 applyPartition :: (Int -> Bool) -> Range -> (Range, Range)
 applyPartition f (start, end) = ((head acc, last acc), (head rej, last rej))
     where (acc, rej) = partition f [start..end]
-
 
 partFromRange :: Part -> Selector -> Range -> Part 
 partFromRange p s r = 
