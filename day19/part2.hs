@@ -1,5 +1,6 @@
 import Data.Map.Strict qualified as M
 import Data.List.Split (splitOn)
+import Data.List (partition)
 
 type Range = (Int, Int)
 
@@ -23,31 +24,80 @@ type Workflow = (Selector, Int -> Bool, Outcome)
 
 type WorkflowMap = M.Map String [Workflow]
 
+instance Show (Int -> Bool) where 
+   show f = "Function" 
+
 main = do 
-    contents <- readFile "input.txt"
+    contents <- readFile "sample.txt"
     let (rawWorkflows : rawParts : _) = (getLineGroups . lines) contents
     let workMap = (M.fromList . map parseWorkflow) rawWorkflows
     -- let parts = map parsePart rawParts
-    let initialPart = [Part (1,4000) (1,4000) (1,4000) (1,4000)]
-    let outcomes = map (getOutcome workMap) initialPart
-    -- let soln = sum [sumPart p | (p, s) <- zip parts outcomes, s == Accept]
-    print outcomes
+    let initialPart = Part (1,4000) (1,4000) (1,4000) (1,4000)
+    -- let outcomes = map (getOutcome workMap) initialPart
+    let tempSol = getOutcome workMap initialPart
+    let summed = map partToCombinations tempSol
+    print tempSol
+    print summed
+    print (sum summed)
 
-getOutcome :: WorkflowMap -> Part -> Outcome
-getOutcome mp pt = getOutcome' mp pt "in"
+getOutcome :: WorkflowMap -> Part -> [Part]
+getOutcome mp initialPart = getOutcome' mp initialPart "in"
+
+decider :: WorkflowMap -> (Part, Outcome) -> [Part]
+decider mp (prt, outcome) = case outcome of 
+    Accept -> [prt] 
+    Reject -> []
+    Refer s -> getOutcome' mp prt s 
             
 -- TODO: WORK ON THIS!
-getOutcome' :: WorkflowMap -> Part -> String -> Outcome 
+getOutcome' :: WorkflowMap -> Part -> String -> [Part] 
 getOutcome' mp pt st = 
-    case go (mp M.! st) pt  of 
-        Accept -> Accept
-        Reject -> Reject
-        Refer r -> getOutcome' mp pt r
+    let partsAndOutcomes = go (mp M.! st) pt
+        accepted = [p | (p,o) <- partsAndOutcomes, o == Accept]
+        referred = [x | x@(p,o) <- partsAndOutcomes, o /= Accept && o /= Reject]
+    in if  null referred 
+      then accepted 
+      else accepted ++ concatMap getReferOutcomes referred 
     where 
-        go ((_, f, o):xs) part  = 
-             if f part 
-                then o 
-                else go xs part
+        getReferOutcomes (p, Refer s) = getOutcome' mp p s 
+
+partToCombinations :: Part -> Int 
+partToCombinations p = (rangeToNum . x) p * (rangeToNum . m) p * (rangeToNum . a) p * (rangeToNum . s) p
+
+rangeToNum :: Range -> Int 
+rangeToNum (s,e) = e - s + 1 
+        
+
+
+go :: [Workflow] -> Part -> [(Part, Outcome)]
+go ((Any, _, o):xs) part = [(part, o)]
+go ((s, f, o):xs) part = 
+    let selectorFn = selectorToFunction s
+        (good, bad) = (applyPartition f . selectorFn) part
+        goodPart = partFromRange part s good
+        badPart = partFromRange part s bad
+    in if null bad then [(goodPart, o)] else (goodPart, o) : go xs badPart
+
+     -- if f part 
+     --    then o 
+     --    else go xs part
+
+getParts :: [(Part, Outcome)] -> Outcome -> [Part]
+getParts xs outcome = [p | (p,o) <- xs, o == outcome]
+
+
+applyPartition :: (Int -> Bool) -> Range -> (Range, Range)
+applyPartition f (start, end) = ((head acc, last acc), (head rej, last rej))
+    where (acc, rej) = partition f [start..end]
+
+
+partFromRange :: Part -> Selector -> Range -> Part 
+partFromRange p s r = 
+    case s of 
+        X -> p {x = r} 
+        M -> p {m = r}
+        A -> p {a = r} 
+        S -> p {s = r}
 
 -- *** PARSING ***
 
@@ -105,4 +155,10 @@ charToSelector c = case c of
      'm' -> M 
      'a' -> A 
      's' -> S 
-     _  -> Any
+
+selectorToFunction :: Selector -> (Part -> Range)
+selectorToFunction sel = case sel of 
+    X -> x 
+    M -> m 
+    A -> a 
+    S -> s 
